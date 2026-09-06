@@ -46,8 +46,13 @@ Simple And Readable Arithmetic Language is a very simple staticly typed scriptin
 
 <block> ::= { <stmt-list> }
 
-<assignment> ::= <type> <identifier> = <exp>;
-                  | <identifier> = <exp>;
+<assignment> ::= <type> <identifier> <array-dimensions>? = <initializer>;
+                  | <identifier> <array-dimensions>? = <exp>;
+
+<initializer> ::= <exp>
+                  | "[" <initializer-list> "]"
+<initializer-list> ::= <initializer>
+                      | <initializer> "," <initializer-list>
 
 <exp> ::= <exp> + <term>
           | <exp> - <term>
@@ -60,15 +65,18 @@ Simple And Readable Arithmetic Language is a very simple staticly typed scriptin
 
 <factor> ::= (<exp>)
             | <number>
+            | <array-access>
             | <identifier>
             | <func-call>
+
+<array-dimensions> ::= "[" <number> "]" { "[" <number> "]" }
+<array-access> ::= <identifier> "[" <exp> "]" { "[" <exp> "]" }
 
 <identifier> ::= <letter>
                 | <letter><number>
                 | <letter><identifier>
 
-<number> ::= <digit>
-            | <digit><number>
+<number> ::= <digit> { <digit> } [ . <digit> { <digit> } ]
 
 <word> ::= <chars>
           | <chars><word>
