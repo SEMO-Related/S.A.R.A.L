@@ -1,0 +1,16 @@
+ast_serialize==0.11.1
+colorama==0.4.6
+coverage==7.16.0
+iniconfig==2.3.0
+librt==0.15.0
+mypy==2.3.1
+mypy_extensions==1.1.0
+packaging==26.3
+pathspec==1.1.1
+pluggy==1.6.0
+Pygments==2.21.0
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.16.7
+-e git+https://github.com/SEMO-Related/S.A.R.A.L.git@1dc7e7bf7e437b82d1b0a728fa6cb7c235794768#egg=saral
+typing_extensions==4.16.0
