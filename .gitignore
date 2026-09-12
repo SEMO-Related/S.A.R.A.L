@@ -1,0 +1,61 @@
+# --- Virtual environment ---
+.venv/
+venv/
+env/
+
+# --- Python bytecode / cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Packaging / build artifacts ---
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# --- Testing / coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+
+# --- Type checking / linting caches ---
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+
+# --- VSCode (keep shared config, ignore personal/local overrides) ---
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# --- Jupyter (in case you use notebooks for experimenting) ---
+.ipynb_checkpoints/
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Environment / secrets ---
+.env
+.env.*
+
+# --- Editor swap/backup files ---
+*.swp
+*.swo
+*~
+
+# --- Project-specific: generated output / temp test files ---
+*.tokens
+*.ast
+/tmp/
