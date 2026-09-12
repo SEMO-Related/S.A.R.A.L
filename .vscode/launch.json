@@ -5,8 +5,8 @@
       "name": "Run lexer on sample",
       "type": "debugpy",
       "request": "launch",
-      "module": "mylang.cli",
-      "args": ["tokenize", "tests/fixtures/sample1.mylang"],
+      "module": "saral.cli",
+      "args": ["tokenize", "tests/test.saral"],
       "console": "integratedTerminal"
     }
   ]
