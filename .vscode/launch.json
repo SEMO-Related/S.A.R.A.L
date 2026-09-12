@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run lexer on sample",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mylang.cli",
+      "args": ["tokenize", "tests/fixtures/sample1.mylang"],
+      "console": "integratedTerminal"
+    }
+  ]
+}
