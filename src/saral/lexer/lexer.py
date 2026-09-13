@@ -1,3 +1,4 @@
+from ..error import LexError
 from .token import Token
 from .token_type import TokenType, KEYWORDS
 
@@ -31,6 +32,7 @@ class Lexer:
   def __init__(self, source: str) -> None:
     self.source = source
     self.tokens: list[Token] = []
+    self.errors: list[LexError] = []
 
     self._start = 0
     self._current = 0
@@ -69,6 +71,11 @@ class Lexer:
       return "\0"
     return self.source[idx]
 
+  
+  def _error(self, message: str) -> None:
+    """Add error message to the errors list"""
+    self.errors.append(LexError(message, self._line, self._start_column))
+
   def _add_token(self, type_: TokenType, literal=None) -> None:
     """Add the identified token to the tokens list"""
     lexeme = self.source[self._start : self._current]
@@ -106,12 +113,18 @@ class Lexer:
       self._add_token(_ONE_CHAR_OPERATORS[ch])
       return
 
+    self._error(f"Unexpected character {ch!r}")
+
+
   def _scan_string(self) -> None:
     value_chars: list[str] = []
     while self._peek() != '"' and not self._at_end() and self._peek() != "\n":
       value_chars.append(self._advance())
 
-    self._advance()
+    if self._at_end() or self._peek() == "\n":
+      self._error("Unterminated string literal")
+    else:
+      self._advance()
     self._add_token(TokenType.STRING, literal="".join(value_chars))
 
   def _scan_number(self) -> None:
