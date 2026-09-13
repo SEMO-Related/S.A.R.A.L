@@ -44,7 +44,7 @@ class Lexer:
       self._start = self._current
       self._start_column = self._col
       self._scan_token()
-    self.tokens.append(Token(TokenType.EOF, "", None, self._line, self._col))
+    self.tokens.append(Token(TokenType.EOF, "", None))
     return self.tokens
 
   def _at_end(self) -> bool:
@@ -71,7 +71,7 @@ class Lexer:
       return "\0"
     return self.source[idx]
 
-  
+
   def _error(self, message: str) -> None:
     """Add error message to the errors list"""
     self.errors.append(LexError(message, self._line, self._start_column))
@@ -80,7 +80,7 @@ class Lexer:
     """Add the identified token to the tokens list"""
     lexeme = self.source[self._start : self._current]
     self.tokens.append(
-      Token(type_, lexeme, literal, self._line, self._start_column)
+      Token(type_, lexeme, literal)
     )
 
   def _scan_token(self):
