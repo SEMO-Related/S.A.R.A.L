@@ -2,104 +2,9 @@
 
 Simple And Readable Arithmetic Language is a very simple staticly typed scripting language designed and implemented as the final project for `CS609` course at `SEMO`.
 
-### Initial BNF/EBNF
+### BNF/EBNF Grammar
 
-```
-<program> ::= <stmt-list>
-
-<stmt-list> ::= <stmt> | <stmt> <stmt-list>
-
-<stmt> ::= <assignment>
-          | <show-stmt>
-          | <if-stmt>
-          | <while-stmt>
-          | <func-stmt>
-          | <func-call-stmt>
-          | <return-stmt>
-
-<show-stmt> ::= show(<string>); | show(<exp>);
-<string> ::= "<word>"
-
-<func-stmt> ::= <return-type> <identifier>(<param-list>) <block>
-<param-list> ::= epsilon
-                | <type> <identifier>
-                | <type> <identifier>, <param-list>
-<func-call> ::= <identifier>(<arg-list>)
-<func-call-stmt> ::= <func-call>;
-<arg-list> ::= epsilon
-              | <exp>
-              | <exp>, <arg-list>
-
-<return-stmt> ::= return <exp>;
-
-<while-stmt> ::= while(<comp-exp>) <block>
-
-<if-stmt> ::= if(<comp-exp>) <block> [else <block>]
-
-<comp-exp> ::= <exp> <comp-op> <exp>
-<comp-op> ::=  !=
-              | ==
-              | <
-              | >
-              | <=
-              | >=
-
-<block> ::= { <stmt-list> }
-
-<assignment> ::= <type> <identifier> <array-dimensions>? = <initializer>;
-                  | <identifier> <array-dimensions>? = <exp>;
-
-<initializer> ::= <exp>
-                  | "[" <initializer-list> "]"
-<initializer-list> ::= <initializer>
-                      | <initializer> "," <initializer-list>
-
-<exp> ::= <exp> + <term>
-          | <exp> - <term>
-          | <term>
-
-<term> ::= <term> % <factor>
-            | <term> / <factor>
-            | <term> * <factor>
-            | <factor>
-
-<factor> ::= (<exp>)
-            | <number>
-            | <array-access>
-            | <identifier>
-            | <func-call>
-
-<array-dimensions> ::= "[" <number> "]" { "[" <number> "]" }
-<array-access> ::= <identifier> "[" <exp> "]" { "[" <exp> "]" }
-
-<identifier> ::= <letter>
-                | <letter><number>
-                | <letter><identifier>
-
-<number> ::= <digit> { <digit> } [ . <digit> { <digit> } ]
-
-<word> ::= <chars>
-          | <chars><word>
-<chars> ::= " "
-            | <letter>
-            | <digit>
-            | <printable-chars>
-
-<printable-chars> ::= @ | ! | # | $
-                      | % | ^ | &
-                      | * | ( | )
-                      | : | ? | ,
-                      | _ | \ | /
-                      | .
-
-<digit> ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
-
-<letter> ::= a | b | ... | z | A | B | ..... | Z
-
-<type> ::= int | float | string | bool
-
-<return-type> ::= int | float | string | bool
-```
+You can find the grammar for `saral` in here [Grammar](https://github.com/SEMO-Related/S.A.R.A.L/blob/main/grammar/grammar.ebnf)
 
 ### Sample programs
 
@@ -132,3 +37,60 @@ bool isMeme(int num) {
   return false;
 }
 ```
+
+### Getting Started
+
+To get started with the development of the Saral language, you can follow the steps below.
+
+#### Clone the repo
+
+```bash
+git clone https://github.com/SEMO-Related/S.A.R.A.L.git
+```
+
+#### Create a python virtual environment
+
+```bash
+python -m venv .venv
+```
+
+#### Start the virtual environment
+
+`Windows`
+```bash title="In bash"
+.venv/Scripts/activate
+```
+
+`Powershell`
+```powershell title="In Powershell"
+.\venv\Scripts\Activate.ps1
+```
+
+`Mac`
+```bash
+source .venv/bin/activate
+```
+
+#### Install all the requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+#### Install the saral lexer cli
+
+```bash
+pip install -e .
+```
+
+#### Run the test file
+
+```bash
+python -m saral.cli tokenize <path-to-sample-file>
+```
+
+Or hit `F5` in VSCode to run lexer on sample file
+
+### Testing
+
+To test the lexer you can simply run the command `pytest`. It will run all the test cases written inside `tests/lexer/test_lexer.py`
