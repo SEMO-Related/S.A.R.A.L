@@ -65,9 +65,7 @@
 <array-dimensions> ::= "[" <number> "]" { "[" <number> "]" }
 <array-access> ::= <identifier> "[" <exp> "]" { "[" <exp> "]" }
 
-<identifier> ::= <letter>
-                | <letter><number>
-                | <letter><identifier>
+<identifier> ::= <letter> { <letter> | <digit> }
 
 <number> ::= <digit> { <digit> } [ . <digit> { <digit> } ]
 

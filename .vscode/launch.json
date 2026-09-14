@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run lexer on sample",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "saral.cli",
+      "args": ["tokenize", "tests/test.saral"],
+      "console": "integratedTerminal"
+    }
+  ]
+}
