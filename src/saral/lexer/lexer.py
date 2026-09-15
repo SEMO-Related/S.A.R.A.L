@@ -125,7 +125,7 @@ class Lexer:
       self._error("Unterminated string literal")
     else:
       self._advance()
-    self._add_token(TokenType.STRING, literal="".join(value_chars))
+    self._add_token(TokenType.STRING_LITERAL, literal="".join(value_chars))
 
   def _scan_number(self) -> None:
     while self._peek().isdigit():
