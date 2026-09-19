@@ -12,5 +12,4 @@ Pygments==2.21.0
 pytest==9.1.1
 pytest-cov==7.1.0
 ruff==0.16.7
--e git+https://github.com/SEMO-Related/S.A.R.A.L.git@1dc7e7bf7e437b82d1b0a728fa6cb7c235794768#egg=saral
 typing_extensions==4.16.0

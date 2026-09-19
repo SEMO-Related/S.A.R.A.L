@@ -10,7 +10,8 @@
           | <func-call-stmt>
           | <return-stmt>
 
-<show-stmt> ::= show(<string>); | show(<exp>);
+<show-stmt> ::= show(<string>); 
+              | show(<exp>);
 <string> ::= "<word>"
 
 <func-stmt> ::= <return-type> <identifier>(<param-list>) <block>

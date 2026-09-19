@@ -57,16 +57,19 @@ python -m venv .venv
 #### Start the virtual environment
 
 `Windows`
+
 ```bash title="In bash"
 .venv/Scripts/activate
 ```
 
 `Powershell`
+
 ```powershell title="In Powershell"
 .\venv\Scripts\Activate.ps1
 ```
 
 `Mac`
+
 ```bash
 source .venv/bin/activate
 ```
@@ -87,6 +90,10 @@ pip install -e .
 
 ```bash
 python -m saral.cli tokenize <path-to-sample-file>
+```
+
+```bash
+python -m saral.cli parse <path-to-sample-file>
 ```
 
 Or hit `F5` in VSCode to run lexer on sample file

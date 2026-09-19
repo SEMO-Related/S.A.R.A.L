@@ -5,10 +5,11 @@ class TokenType(Enum):
 
   # type keywords
   KW_INT = auto()
-  KW_FLOAT = auto()
   INT_LITERAL = auto()
+  KW_FLOAT = auto()
   FLOAT_LITERAL = auto()
-  STRING = auto()
+  KW_STRING = auto()
+  STRING_LITERAL = auto()
   BOOL = auto()
 
   # boolean literal keywords
@@ -56,7 +57,7 @@ class TokenType(Enum):
 KEYWORDS: dict[str, TokenType] = {
     "int": TokenType.KW_INT,
     "float": TokenType.KW_FLOAT,
-    "string": TokenType.STRING,
+    "string": TokenType.KW_STRING,
     "bool": TokenType.BOOL,
     "true": TokenType.KW_TRUE,
     "false": TokenType.KW_FALSE,
