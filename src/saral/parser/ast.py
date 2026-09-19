@@ -37,8 +37,16 @@ class Program:
     statements: list[Stmt]
 
 @dataclass
-class Literal(Expr):
-    value: object
+class NumberNode(Expr):
+    value: int | float
+
+@dataclass
+class StringNode(Expr):
+    value: str
+
+@dataclass
+class BoolNode(Expr):
+    value: bool
 
 @dataclass
 class Variable(Expr):

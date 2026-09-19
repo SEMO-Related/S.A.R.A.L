@@ -42,26 +42,20 @@ class Parser:
 
     def initializer(self):
         if self.match(TokenType.LBRACKET):
+            name = self.previous().lexeme
             elements = []
             if not self.check(TokenType.RBRACKET):
-                elements.append(self.equality())
+                elements.append(self.expression())
                 while self.match(TokenType.COMMA):
-                    elements.append(self.equality())
+                    elements.append(self.expression())
             self.consume(TokenType.RBRACKET, "Expected ']' after array initializer")
-            return ArrayInitializer(elements=elements)
-        return self.equality()
+            return self.array_initializer(name,elements=elements)
+        return self.expression()
 
-    def equality(self):
-        equal = self.comparison()
-        while self.match(TokenType.EQ, TokenType.NEQ):
-            operator = self.previous()
-            right = self.comparison()
-            equal = Binary(left=equal, operator=operator.lexeme, right=right)
-        return equal
 
     def comparison(self):
         comp = self.expression()
-        if self.match(TokenType.LT, TokenType.LE, TokenType.GT, TokenType.GE):
+        if self.match(TokenType.EQ, TokenType.NEQ, TokenType.LT, TokenType.LE, TokenType.GT, TokenType.GE):
             operator = self.previous()
             right = self.expression()
             comp = Binary(left=comp, operator=operator.lexeme, right=right)
@@ -84,16 +78,18 @@ class Parser:
         return term
 
     def factor(self):
-        #print("Current token in factor:", self.peek())  # Debugging line
-        if self.match(TokenType.INT_LITERAL, 
-                      TokenType.FLOAT_LITERAL,
-                      TokenType.STRING_LITERAL, 
-                      TokenType.KW_TRUE, 
-                      TokenType.KW_FALSE):
-            return Literal(value=self.previous().literal)
+        print("Current token in factor:", self.peek())  # Debugging line
+        if self.match(TokenType.INT_LITERAL, TokenType.FLOAT_LITERAL):
+            return NumberNode(value=self.previous().literal)
+        
+        if self.match(TokenType.STRING_LITERAL):
+            return StringNode(value=self.previous().literal)
+        
+        if self.match(TokenType.KW_TRUE, TokenType.KW_FALSE):
+            return BoolNode(value=self.previous().literal)
 
         if self.match(TokenType.LPAREN):
-            expr = self.initializer()
+            expr = self.expression()
             self.consume(TokenType.RPAREN, "Expected ')' after expression")
             return expr
         
@@ -109,7 +105,7 @@ class Parser:
         return Parameter(param_type=self.previous().lexeme, name=name.lexeme)
 
     def argument(self):
-        return Argument(value=self.initializer())
+        return Argument(value=self.expression())
 
     def block(self):
         statements = []
@@ -126,21 +122,21 @@ class Parser:
             # Handle array initializer
             pass
         self.consume(TokenType.ASSIGN, "Expected '=' after variable name")
-        value = self.initializer()
+        value = self.expression()
         self.consume(TokenType.SEMICOLON, "Expected ';' after assignment")
 
-        return Assignment(var_type=type_token.lexeme, name=name.lexeme, value=value)
+        return AssignmentStmt(var_type=type_token.lexeme, name=name.lexeme, value=value)
     
     def show_statement(self):
         self.consume(TokenType.LPAREN, "Expected '(' after 'show'")
-        expr = self.initializer()
+        expr = self.expression()
         self.consume(TokenType.RPAREN, "Expected ')' after expression")
         self.consume(TokenType.SEMICOLON, "Expected ';' after show statement")
         return ShowStmt(expression=expr)
 
     def if_statement(self):
         self.consume(TokenType.LPAREN, "Expected '(' after 'if'")
-        condition = self.initializer()
+        condition = self.expression()
         self.consume(TokenType.RPAREN, "Expected ')' after condition")
 
         then_branch = self.block()
@@ -153,7 +149,7 @@ class Parser:
 
     def while_statement(self):
         self.consume(TokenType.LPAREN, "Expected '(' after 'while'")
-        condition = self.initializer()
+        condition = self.expression()
         self.consume(TokenType.RPAREN, "Expected ')' after condition")
         self.consume(TokenType.LBRACE, "Expected '{' before 'while' block")
         body = self.block()
@@ -193,7 +189,8 @@ class Parser:
         self.consume(TokenType.RBRACE, "Expected '}' after function body")
         return FunctionStmt(return_type=type_token.lexeme, name=name.lexeme, parameters=parameters, body=body)
 
-    #def array_initializer(self):
+    def array_initializer(self,name,elements):
+        pass
 
     
     # -------------Support Methods-------------
