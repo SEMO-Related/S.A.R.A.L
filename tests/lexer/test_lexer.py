@@ -1,4 +1,5 @@
 from saral.lexer.lexer import Lexer, TokenType
+from saral.error import SaralError
 
 
 def types_of(source: str) -> list[TokenType]:
@@ -63,7 +64,7 @@ def test_all_type_and_control_keywords():
     assert types_of(source) == [
         TokenType.KW_INT,
         TokenType.KW_FLOAT,
-        TokenType.STRING,
+        TokenType.KW_STRING,
         TokenType.BOOL,
         TokenType.IF,
         TokenType.ELSE,
@@ -83,7 +84,7 @@ def test_bool_literal_values():
 
 def test_string_literal():
     tokens = Lexer('"hello world!"').scan_tokens()
-    assert tokens[0].type == TokenType.STRING
+    assert tokens[0].type == TokenType.STRING_LITERAL
     assert tokens[0].literal == "hello world!"
 
 
@@ -114,7 +115,7 @@ def test_full_show_statement():
     assert types == [
         TokenType.SHOW,
         TokenType.LPAREN,
-        TokenType.STRING,
+        TokenType.STRING_LITERAL,
         TokenType.RPAREN,
         TokenType.SEMICOLON,
         TokenType.EOF,

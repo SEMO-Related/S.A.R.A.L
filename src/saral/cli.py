@@ -3,6 +3,7 @@ import sys
 
 from .lexer import Lexer
 from .parser.parser import Parser
+from .parser.ast import print_ast
 
 def cmd_tokenize(path: str) -> int:
   source = get_source(path)
@@ -33,7 +34,7 @@ def cmd_parse(path: str) -> int:
     for err in lexer.errors:
       print(f"  {err}", file=sys.stderr)
     return 1
-  print(ast)
+  print_ast(ast)
   return 0
   
 def get_source(path: str | None) -> str:

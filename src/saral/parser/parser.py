@@ -1,6 +1,7 @@
 from saral.lexer.token import Token
 from saral.lexer.token_type import TokenType
 from saral.parser.ast import *
+from saral.error import SaralError
 
 class Parser:
     def __init__(self, tokens: list[Token]):
@@ -13,23 +14,29 @@ class Parser:
         while not self.at_end():
             statements.append(self.statement())
 
-        return statements
+        return Program(statements=statements)
         
     # -------------Grammar Rules-------------
     def statement(self):
-        print("Current token:", self.peek())  # Debugging line
+        #print("Current statement token:",self.peek())  # Debugging line
         if self.is_assign():
-            return self.assign_type()
+            #print("Parsing assignment statement")  # Debugging line
+            return self.assignment()
         elif self.match(TokenType.SHOW):
+            #print("Parsing show statement")  # Debugging line
             return self.show_statement()
         elif self.match(TokenType.IF):
+            #print("Parsing if statement")  # Debugging line
             return self.if_statement()
         elif self.match(TokenType.WHILE):
+            #print("Parsing while statement")  # Debugging line
             return self.while_statement()
         elif self.match(TokenType.RETURN):
+            #print("Parsing return statement")  # Debugging line
             return self.return_statement()
         elif self.match(TokenType.IDENTIFIER):
-            return self.function_call_statement()
+            #print("Matched identifier statement:", self.previous())  # Debugging line
+            return self.function_call_statement(self.previous())
         else:
             raise Exception("Unexpected token: " + self.peek().lexeme) # Replace with a proper error handling
 
@@ -45,27 +52,27 @@ class Parser:
         return self.equality()
 
     def equality(self):
-        expr = self.comparison()
+        equal = self.comparison()
         while self.match(TokenType.EQ, TokenType.NEQ):
             operator = self.previous()
             right = self.comparison()
-            expr = Binary(left=expr, operator=operator, right=right)
-        return expr
+            equal = Binary(left=equal, operator=operator.lexeme, right=right)
+        return equal
 
     def comparison(self):
-        expr = self.expression()
+        comp = self.expression()
         if self.match(TokenType.LT, TokenType.LE, TokenType.GT, TokenType.GE):
             operator = self.previous()
             right = self.expression()
-            expr = Binary(left=expr, operator=operator, right=right)
-        return expr
+            comp = Binary(left=comp, operator=operator.lexeme, right=right)
+        return comp
 
     def expression(self):
         expr = self.term()
         while self.match(TokenType.PLUS, TokenType.MINUS):
             operator = self.previous()
             right = self.term()
-            expr = Binary(left=expr, operator=operator, right=right)
+            expr = Binary(left=expr, operator=operator.lexeme, right=right)
         return expr
 
     def term(self):
@@ -73,45 +80,60 @@ class Parser:
         while self.match(TokenType.MUL, TokenType.DIV, TokenType.MOD):
             operator = self.previous()
             right = self.factor()
-            term = Binary(left=term, operator=operator, right=right)
+            term = Binary(left=term, operator=operator.lexeme, right=right)
         return term
 
     def factor(self):
+        #print("Current token in factor:", self.peek())  # Debugging line
         if self.match(TokenType.INT_LITERAL, 
-                      TokenType.FLOAT_LITERAL, 
+                      TokenType.FLOAT_LITERAL,
                       TokenType.STRING_LITERAL, 
                       TokenType.KW_TRUE, 
                       TokenType.KW_FALSE):
             return Literal(value=self.previous().literal)
 
         if self.match(TokenType.LPAREN):
-            expr = self.equality()
+            expr = self.initializer()
             self.consume(TokenType.RPAREN, "Expected ')' after expression")
             return expr
+        
         if self.match(TokenType.IDENTIFIER):
+            if self.check(TokenType.LPAREN):
+                return self.function_call_statement(self.previous())
             return Variable(name=self.previous().lexeme)
-        raise Exception("Expected expression, found: " + self.peek().lexeme) # Replace with a proper error handling mechanis
+        raise Exception("Expected expression, found: " + self.peek().lexeme) # Replace with a proper error handling mechanism
 
     def parameter(self):
-        # Implement the parameter parsing logic here
-        pass
+        self.consume_type()
+        name = self.consume(TokenType.IDENTIFIER, "Expected parameter name")
+        return Parameter(param_type=self.previous().lexeme, name=name.lexeme)
 
     def argument(self):
-        # Implement the argument parsing logic here
-        pass
+        return Argument(value=self.initializer())
 
     def block(self):
         statements = []
-        self.consume(TokenType.LBRACE, "Expected '{' before block")
         while not self.check(TokenType.RBRACE) and not self.at_end():
             statements.append(self.statement())
-        self.consume(TokenType.RBRACE, "Expected '}' after block")
-        return statements
-        
+        return BlockStmt(statements=statements)
 
+    def assignment(self):
+        type_token = self.advance()
+        name = self.consume(TokenType.IDENTIFIER, "Expected variable name after type")
+        if self.check(TokenType.LPAREN):
+                    return self.function_statement(type_token, name)
+        if self.check(TokenType.LBRACKET):
+            # Handle array initializer
+            pass
+        self.consume(TokenType.ASSIGN, "Expected '=' after variable name")
+        value = self.initializer()
+        self.consume(TokenType.SEMICOLON, "Expected ';' after assignment")
+
+        return Assignment(var_type=type_token.lexeme, name=name.lexeme, value=value)
+    
     def show_statement(self):
         self.consume(TokenType.LPAREN, "Expected '(' after 'show'")
-        expr = self.comparison()
+        expr = self.initializer()
         self.consume(TokenType.RPAREN, "Expected ')' after expression")
         self.consume(TokenType.SEMICOLON, "Expected ';' after show statement")
         return ShowStmt(expression=expr)
@@ -122,88 +144,64 @@ class Parser:
         self.consume(TokenType.RPAREN, "Expected ')' after condition")
 
         then_branch = self.block()
-
         else_branch = None
         if self.match(TokenType.ELSE):
+            self.consume(TokenType.LBRACE, "Expected '{' before 'else' block")
             else_branch = self.block()
 
-        return {"type": "if", 
-                "condition": condition, 
-                "then": then_branch, 
-                "else": else_branch}
+        return IfStmt(condition=condition, then_branch=then_branch, else_branch=else_branch)
 
     def while_statement(self):
         self.consume(TokenType.LPAREN, "Expected '(' after 'while'")
         condition = self.initializer()
         self.consume(TokenType.RPAREN, "Expected ')' after condition")
+        self.consume(TokenType.LBRACE, "Expected '{' before 'while' block")
         body = self.block()
-        return {"type": "while", 
-                "condition": condition, 
-                "body": body}
+        self.consume(TokenType.RBRACE, "Expected '}' after 'while' block")
+        
+        return WhileStmt(condition=condition, body=body)
 
     def return_statement(self):
         value = None
         if not self.check(TokenType.SEMICOLON):
             value = self.initializer()
         self.consume(TokenType.SEMICOLON, "Expected ';' after return statement")
-        return {"type": "return", 
-                "value": value}
+        return ReturnStmt(value=value)
 
-    def function_call_statement(self):
-        name = self.consume(TokenType.IDENTIFIER, "Expected function name")
+    def function_call_statement(self, name_token):
+
         self.consume(TokenType.LPAREN, "Expected '(' after function name")
         arguments = []
         if not self.check(TokenType.RPAREN):
-            arguments.append(self.initializer())
+            arguments.append(self.argument())
             while self.match(TokenType.COMMA):
-                arguments.append(self.initializer())
+                arguments.append(self.argument())
         self.consume(TokenType.RPAREN, "Expected ')' after arguments")
-        self.consume(TokenType.SEMICOLON, "Expected ';' after function call")
-        return {"type": "function_call", 
-                "name": name.lexeme, 
-                "arguments": arguments}
+        return FunctionCall(name=name_token.lexeme, arguments=arguments)
 
     def function_statement(self, type_token, name):
+
         self.consume(TokenType.LPAREN, "Expected '(' after function name")
         parameters = []
         if not self.check(TokenType.RPAREN):
-            parameters.append(self.consume_type().lexeme)
-            parameters.append(self.consume(TokenType.IDENTIFIER, "Expected parameter name").lexeme)
+            parameters.append(self.parameter())
             while self.match(TokenType.COMMA):
-                parameters.append(self.consume_type().lexeme)
-                parameters.append(self.consume(TokenType.IDENTIFIER, "Expected parameter name").lexeme)
+                parameters.append(self.parameter())
         self.consume(TokenType.RPAREN, "Expected ')' after parameters")
         self.consume(TokenType.LBRACE, "Expected '{' before function body")
         body = self.block()
-        return FunctionStmt(return_type=type_token, name=name.lexeme, parameters=parameters, body=body)
+        self.consume(TokenType.RBRACE, "Expected '}' after function body")
+        return FunctionStmt(return_type=type_token.lexeme, name=name.lexeme, parameters=parameters, body=body)
 
-    def assignment(self, type_token, name):
-        self.consume(TokenType.ASSIGN, "Expected '=' after variable name")
-        value = self.initializer()
-        self.consume(TokenType.SEMICOLON, "Expected ';' after assignment")
-        return {"type": "assignment", 
-                "return_type": type_token.lexeme, 
-                "name": name.lexeme, 
-                "value": value}
+    #def array_initializer(self):
 
     
     # -------------Support Methods-------------
     def is_assign(self) -> bool:
         return (self.check(TokenType.KW_INT)
-                or self.check(TokenType.KW_FLOAT) 
+                or self.check(TokenType.KW_FLOAT)
                 or self.check(TokenType.KW_STRING) 
                 or self.check(TokenType.BOOL))
-
-    def assign_type(self):
-        type_token = self.advance()
-        name = self.consume(TokenType.IDENTIFIER, "Expected variable name after type")
-        if self.check(TokenType.LPAREN):
-                    return self.function_statement(type_token, name)
-        self.consume(TokenType.ASSIGN, "Expected '=' after variable name")
-        value = self.initializer()
-        self.consume(TokenType.SEMICOLON, "Expected ';' after assignment")
-
-        return Assignment(var_type=type_token, name=name.lexeme, value=value)
     
     def peek(self) -> Token:
         return self.tokens[self.current]

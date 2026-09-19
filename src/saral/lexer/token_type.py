@@ -5,8 +5,8 @@ class TokenType(Enum):
 
   # type keywords
   KW_INT = auto()
-  KW_FLOAT = auto()
   INT_LITERAL = auto()
+  KW_FLOAT = auto()
   FLOAT_LITERAL = auto()
   KW_STRING = auto()
   STRING_LITERAL = auto()
