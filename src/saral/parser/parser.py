@@ -1,5 +1,6 @@
 from saral.lexer.token import Token
 from saral.lexer.token_type import TokenType
+from saral.parser.ast import *
 
 class Parser:
     def __init__(self, tokens: list[Token]):
@@ -12,10 +13,11 @@ class Parser:
         while not self.at_end():
             statements.append(self.statement())
 
-        return Program(statements)
-        pass
+        return statements
+        
     # -------------Grammar Rules-------------
     def statement(self):
+        print("Current token:", self.peek())  # Debugging line
         if self.is_assign():
             return self.assign_type()
         elif self.match(TokenType.SHOW):
@@ -35,24 +37,60 @@ class Parser:
         if self.match(TokenType.LBRACKET):
             elements = []
             if not self.check(TokenType.RBRACKET):
-                elements.append(self.expression())
+                elements.append(self.equality())
                 while self.match(TokenType.COMMA):
-                    elements.append(self.expression())
+                    elements.append(self.equality())
             self.consume(TokenType.RBRACKET, "Expected ']' after array initializer")
-            return {"type": "array_initializer", "elements": elements}
-        return self.expression()
-    
+            return ArrayInitializer(elements=elements)
+        return self.equality()
+
+    def equality(self):
+        expr = self.comparison()
+        while self.match(TokenType.EQ, TokenType.NEQ):
+            operator = self.previous()
+            right = self.comparison()
+            expr = Binary(left=expr, operator=operator, right=right)
+        return expr
+
+    def comparison(self):
+        expr = self.expression()
+        if self.match(TokenType.LT, TokenType.LE, TokenType.GT, TokenType.GE):
+            operator = self.previous()
+            right = self.expression()
+            expr = Binary(left=expr, operator=operator, right=right)
+        return expr
+
     def expression(self):
-        self.consume
-        pass
+        expr = self.term()
+        while self.match(TokenType.PLUS, TokenType.MINUS):
+            operator = self.previous()
+            right = self.term()
+            expr = Binary(left=expr, operator=operator, right=right)
+        return expr
 
     def term(self):
-        # Implement the term parsing logic here
-        pass
+        term = self.factor()
+        while self.match(TokenType.MUL, TokenType.DIV, TokenType.MOD):
+            operator = self.previous()
+            right = self.factor()
+            term = Binary(left=term, operator=operator, right=right)
+        return term
 
     def factor(self):
-        # Implement the factor parsing logic here
-        pass
+        if self.match(TokenType.INT_LITERAL, 
+                      TokenType.FLOAT_LITERAL, 
+                      TokenType.STRING_LITERAL, 
+                      TokenType.KW_TRUE, 
+                      TokenType.KW_FALSE):
+            return Literal(value=self.previous().literal)
+
+        if self.match(TokenType.LPAREN):
+            expr = self.equality()
+            self.consume(TokenType.RPAREN, "Expected ')' after expression")
+            return expr
+        if self.match(TokenType.IDENTIFIER):
+            return Variable(name=self.previous().lexeme)
+        raise Exception("Expected expression, found: " + self.peek().lexeme) # Replace with a proper error handling mechanis
 
     def parameter(self):
         # Implement the parameter parsing logic here
@@ -73,12 +111,10 @@ class Parser:
 
     def show_statement(self):
         self.consume(TokenType.LPAREN, "Expected '(' after 'show'")
-        expr = self.initializer()
+        expr = self.comparison()
         self.consume(TokenType.RPAREN, "Expected ')' after expression")
         self.consume(TokenType.SEMICOLON, "Expected ';' after show statement")
-        return {"type": 
-                "show", 
-                "expression": expr}
+        return ShowStmt(expression=expr)
 
     def if_statement(self):
         self.consume(TokenType.LPAREN, "Expected '(' after 'if'")
@@ -139,11 +175,7 @@ class Parser:
         self.consume(TokenType.RPAREN, "Expected ')' after parameters")
         self.consume(TokenType.LBRACE, "Expected '{' before function body")
         body = self.block()
-        return {"type": "function", 
-                "return_type": type_token.lexeme, 
-                "name": name.lexeme, 
-                "parameters": parameters, 
-                "body": body}
+        return FunctionStmt(return_type=type_token, name=name.lexeme, parameters=parameters, body=body)
 
     def assignment(self, type_token, name):
         self.consume(TokenType.ASSIGN, "Expected '=' after variable name")
@@ -166,8 +198,12 @@ class Parser:
         type_token = self.advance()
         name = self.consume(TokenType.IDENTIFIER, "Expected variable name after type")
         if self.check(TokenType.LPAREN):
-            return self.function_statement(type_token, name)
-        return self.assignment(type_token, name)
+                    return self.function_statement(type_token, name)
+        self.consume(TokenType.ASSIGN, "Expected '=' after variable name")
+        value = self.initializer()
+        self.consume(TokenType.SEMICOLON, "Expected ';' after assignment")
+
+        return Assignment(var_type=type_token, name=name.lexeme, value=value)
     
     def peek(self) -> Token:
         return self.tokens[self.current]
@@ -181,6 +217,8 @@ class Parser:
         return self.previous()
 
     def check(self, type_: TokenType) -> bool:
+        if self.at_end():
+            return False
         return self.peek().type == type_
 
     def match(self, *types: TokenType) -> bool:
