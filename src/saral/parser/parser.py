@@ -3,6 +3,22 @@ from saral.lexer.token_type import TokenType
 from saral.parser.ast import *
 from saral.error import SaralError
 
+_TYPE_KEYWORDS = (
+    TokenType.KW_INT,
+    TokenType.KW_FLOAT,
+    TokenType.KW_STRING,
+    TokenType.BOOL,
+)
+
+_COMPARISON_OPERATORS = (
+    TokenType.EQ,
+    TokenType.NEQ,
+    TokenType.LT,
+    TokenType.LE,
+    TokenType.GT,
+    TokenType.GE,
+)
+
 class Parser:
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
@@ -19,9 +35,9 @@ class Parser:
     # -------------Grammar Rules-------------
     def statement(self):
         #print("Current statement token:",self.peek())  # Debugging line
-        if self.is_assign():
+        if self.check_any(*_TYPE_KEYWORDS):
             #print("Parsing assignment statement")  # Debugging line
-            return self.assignment()
+            return self.declaration()
         elif self.match(TokenType.SHOW):
             #print("Parsing show statement")  # Debugging line
             return self.show_statement()
@@ -40,7 +56,23 @@ class Parser:
         else:
             raise Exception("Unexpected token: " + self.peek().lexeme) # Replace with a proper error handling
 
-    def initializer(self):
+    def declaration(self) -> Stmt:
+        """<assignment> ::= <type> <identifier> = <initializer>;
+
+        Also handles <func-stmt>, which begins with the same two tokens.
+        """
+        type_token = self.advance()
+        name = self.consume(TokenType.IDENTIFIER, "Expected a variable name after the type")
+
+        if self.check(TokenType.LPAREN):
+            return self.function_statement(type_token, name)
+
+        self.consume(TokenType.ASSIGN, "Expected '=' after the variable name")
+        value = self.initializer()
+        self.consume(TokenType.SEMICOLON, "Expected ';' after the assignment")
+        return AssignmentStmt(var_type=type_token.lexeme, name=name.lexeme, value=value)
+    
+    def initializer(self) -> Expr:
         if self.match(TokenType.LBRACKET):
             name = self.previous().lexeme
             elements = []
@@ -49,17 +81,25 @@ class Parser:
                 while self.match(TokenType.COMMA):
                     elements.append(self.expression())
             self.consume(TokenType.RBRACKET, "Expected ']' after array initializer")
-            return self.array_initializer(name,elements=elements)
+            return ArrayStmt(elements=elements)
         return self.expression()
 
 
     def comparison(self):
-        comp = self.expression()
-        if self.match(TokenType.EQ, TokenType.NEQ, TokenType.LT, TokenType.LE, TokenType.GT, TokenType.GE):
+        expr = self.arithmetic()
+        if self.match(*_COMPARISON_OPERATORS):
             operator = self.previous()
             right = self.expression()
-            comp = Binary(left=comp, operator=operator.lexeme, right=right)
-        return comp
+            expr = Binary(left=expr, operator=operator.lexeme, right=right)
+        return expr
+
+    def arithmetic(self) -> Expr:
+        """<arith-exp> ::= <arith-exp> + <term> | <arith-exp> - <term> | <term>"""
+        expr = self.term()
+        while self.match(TokenType.PLUS, TokenType.MINUS):
+            operator = self.previous()
+            expr = Binary(left=expr, operator=operator.lexeme, right=self.term())
+        return expr
 
     def expression(self):
         expr = self.term()
@@ -215,6 +255,9 @@ class Parser:
         if self.at_end():
             return False
         return self.peek().type == type_
+
+    def check_any(self, *types: TokenType) -> bool:
+        return any(self.check(type_) for type_ in types)
 
     def match(self, *types: TokenType) -> bool:
         for type_ in types:
