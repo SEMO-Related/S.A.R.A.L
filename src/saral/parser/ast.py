@@ -132,45 +132,79 @@ def _children(node) -> list[tuple[str, object]]:
     return result
 
 
-def render_tree(
-    node,
-    prefix: str = "",
-    field_name: str = "",
-    is_last: bool = True,
-    is_root: bool = True,
-) -> str:
-    """Render an AST as an indented tree.
+_GAP = 3
 
-        Program
-        └── AssignmentStmt (int x)
-            └── Binary (+)
-                ├── NumberNode 2
-                └── Binary (*)
-                    ├── NumberNode 3
-                    └── NumberNode 4
+def _layout(node, field_name: str = "") -> tuple[list[str], int]:
+    """Lay out the subtree rooted at `node` as a block of equal-width lines.
+
+    Returns (lines, anchor), where `anchor` is the column of the node's
+    label centre, so the parent knows where to attach its connector.
     """
-    if is_root:
-        line = _label(node)
-        child_prefix = ""
-    else:
-        connector = "└── " if is_last else "├── "
-        tag = f"{field_name}: " if field_name else ""
-        line = f"{prefix}{connector}{tag}{_label(node)}"
-        child_prefix = prefix + ("    " if is_last else "│   ")
+    label = f"{field_name}: {_label(node)}" if field_name else _label(node)
+    kids = [_layout(child, name) for name, child in _children(node)]
 
-    lines = [line]
-    children = _children(node)
-    for index, (name, child) in enumerate(children):
-        lines.append(
-            render_tree(
-                child,
-                child_prefix,
-                name,
-                index == len(children) - 1,
-                is_root=False,
-            )
-        )
-    return "\n".join(lines)
+    if not kids:
+        return [label], len(label) // 2
+
+    # 1. Place the child blocks side by side and remember each anchor column.
+    anchors: list[int] = []
+    x = 0
+    for block, anchor in kids:
+        anchors.append(x + anchor)
+        x += len(block[0]) + _GAP
+    span = x - _GAP
+
+    height = max(len(block) for block, _ in kids)
+    body: list[str] = []
+    for row in range(height):
+        cells = [
+            block[row] if row < len(block) else " " * len(block[0])
+            for block, _ in kids
+        ]
+        body.append((" " * _GAP).join(cells))
+
+    # 2. Draw the connector row between this node and its children.
+    centre = (anchors[0] + anchors[-1]) // 2
+    bar = [" "] * span
+    if len(anchors) == 1:
+        bar[centre] = "│"
+    else:
+        for i in range(anchors[0], anchors[-1] + 1):
+            bar[i] = "─"
+        for a in anchors:
+            bar[a] = "┬"
+        bar[anchors[0]] = "┌"
+        bar[anchors[-1]] = "┐"
+        bar[centre] = "┼" if centre in anchors else "┴"
+
+    # 3. Centre this node's label above the connector. If the label sticks
+    #    out past the left edge, shift everything right to make room.
+    start = centre - len(label) // 2
+    shift = max(0, -start)
+    start += shift
+    width = max(span + shift, start + len(label))
+
+    rows = [
+        " " * start + label,
+        " " * shift + "".join(bar),
+        *(" " * shift + line for line in body),
+    ]
+    return [row.ljust(width) for row in rows], centre + shift
+
+
+def render_tree(node) -> str:
+    """Render an AST as a top-down tree.
+                    Program
+                       │
+            AssignmentStmt (int x)
+                       │
+               value: Binary (+)
+             ┌─────────┴──────────┐
+    left: NumberNode 2   right: NumberNode 3
+    """
+    lines, _ = _layout(node)
+    return "\n".join(line.rstrip() for line in lines)
+
 
 def print_ast(node) -> None:
     """Print an AST as a tree."""
