@@ -26,17 +26,19 @@ def cmd_parse(path: str) -> int:
   source = get_source(path)
   lexer = Lexer(source)
   tokens = lexer.scan_tokens()
-  parser = Parser(tokens)
-  ast = parser.parse()
 
   if lexer.errors:
     print(f"\n{len(lexer.errors)} lexical error(s):", file=sys.stderr)
     for err in lexer.errors:
       print(f"  {err}", file=sys.stderr)
     return 1
+
+  parser = Parser(tokens)
+  ast = parser.parse()
+
   print_ast(ast)
   return 0
-  
+
 def get_source(path: str | None) -> str:
   if path:
     with open(path, "r", encoding="utf-8") as f:
@@ -75,7 +77,7 @@ def main() -> int:
 
   elif args.command == "parse":
     return cmd_parse(args.file)
-  
+
   return 0
 
 if __name__ == "__main__":
