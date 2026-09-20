@@ -88,7 +88,7 @@ class ReturnStmt(Stmt):
 @dataclass
 class IfStmt(Stmt):
     condition: Expr
-    then_branch: BlockStmt 
+    then_branch: BlockStmt
     else_branch: BlockStmt | None = None
 
 @dataclass
@@ -112,4 +112,3 @@ class FunctionCall(Stmt):
 @dataclass
 class ArrayStmt(Expr):
     elements: list[Expr]
-
