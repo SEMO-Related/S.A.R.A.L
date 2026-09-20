@@ -1,3 +1,23 @@
+(* ==========================================================================
+   S.A.R.A.L - Simple And Readable Arithmetic Language
+   BNF/EBNF grammar
+
+   Updated for Final Project Part 3 (Parser & AST).
+   Every rule below is implemented in src/saral/parser/parser.py; the method
+   names in that file mirror the rule names here.
+
+   Changes made in Part 3:
+     - <exp> now sits at the comparison level, so comparisons are legal
+       anywhere an expression is (conditions, assignments, arguments).
+       The old arithmetic-only rule was renamed <arith-exp>.
+     - <factor> now lists <string> and <bool>, which the lexer and parser
+       already supported but the grammar did not mention.
+     - <assignment> reassignment form now takes an <initializer>.
+     - <show-stmt> collapsed to one form, since <exp> covers strings.
+     - Array subscripting rules moved to the "not yet implemented" section
+       so this grammar describes only what the parser actually accepts.
+   ========================================================================== *)
+
 <program> ::= <stmt-list>
 
 <stmt-list> ::= <stmt> | <stmt> <stmt-list>
@@ -10,26 +30,55 @@
           | <func-call-stmt>
           | <return-stmt>
 
-<show-stmt> ::= show(<string>); | show(<exp>);
-<string> ::= "<word>"
+(* ------------------------------ statements ------------------------------ *)
+
+<assignment> ::= <type> <identifier> = <initializer>;    (* declaration   *)
+                | <identifier> = <initializer>;          (* reassignment  *)
+
+<show-stmt> ::= show(<exp>);
+
+<if-stmt> ::= if(<comp-exp>) <block> [else <block>]
+
+<while-stmt> ::= while(<comp-exp>) <block>
+
+<return-stmt> ::= return <exp>;
+                | return;
+
+<block> ::= { <stmt-list> }
+
+(* ------------------------------- functions ------------------------------ *)
 
 <func-stmt> ::= <return-type> <identifier>(<param-list>) <block>
 <param-list> ::= epsilon
                 | <type> <identifier>
                 | <type> <identifier>, <param-list>
+
 <func-call> ::= <identifier>(<arg-list>)
 <func-call-stmt> ::= <func-call>;
 <arg-list> ::= epsilon
               | <exp>
               | <exp>, <arg-list>
 
-<return-stmt> ::= return <exp>;
+(* ------------------------------ expressions -----------------------------
 
-<while-stmt> ::= while(<comp-exp>) <block>
+   Precedence, lowest to highest:
+     <comp-exp>    ==  !=  <  >  <=  >=     (non-associative, at most one)
+     <arith-exp>   +  -                     (left associative)
+     <term>        *  /  %                  (left associative)
+     <factor>      literals, variables, calls, ( ... )
+   ------------------------------------------------------------------------ *)
 
-<if-stmt> ::= if(<comp-exp>) <block> [else <block>]
+<initializer> ::= <exp>
+                  | "[" <initializer-list> "]"
+<initializer-list> ::= epsilon
+                      | <initializer>
+                      | <initializer> "," <initializer-list>
 
-<comp-exp> ::= <exp> <comp-op> <exp>
+<exp> ::= <comp-exp>
+
+<comp-exp> ::= <arith-exp>
+              | <arith-exp> <comp-op> <arith-exp>
+
 <comp-op> ::=  !=
               | ==
               | <
@@ -37,18 +86,8 @@
               | <=
               | >=
 
-<block> ::= { <stmt-list> }
-
-<assignment> ::= <type> <identifier> <array-dimensions>? = <initializer>;
-                  | <identifier> <array-dimensions>? = <exp>;
-
-<initializer> ::= <exp>
-                  | "[" <initializer-list> "]"
-<initializer-list> ::= <initializer>
-                      | <initializer> "," <initializer-list>
-
-<exp> ::= <exp> + <term>
-          | <exp> - <term>
+<arith-exp> ::= <arith-exp> + <term>
+          | <arith-exp> - <term>
           | <term>
 
 <term> ::= <term> % <factor>
@@ -58,18 +97,23 @@
 
 <factor> ::= (<exp>)
             | <number>
-            | <array-access>
+            | <string>
+            | <bool>
             | <identifier>
             | <func-call>
 
-<array-dimensions> ::= "[" <number> "]" { "[" <number> "]" }
-<array-access> ::= <identifier> "[" <exp> "]" { "[" <exp> "]" }
+(* ------------------------------- terminals ------------------------------ *)
 
 <identifier> ::= <letter> { <letter> | <digit> }
 
 <number> ::= <digit> { <digit> } [ . <digit> { <digit> } ]
 
-<word> ::= <chars>
+<bool> ::= true | false
+
+<string> ::= "<word>"
+
+<word> ::= epsilon
+          | <chars>
           | <chars><word>
 <chars> ::= " "
             | <letter>
@@ -90,3 +134,15 @@
 <type> ::= int | float | string | bool
 
 <return-type> ::= int | float | string | bool
+
+(* ==========================================================================
+   Planned, NOT yet implemented by the Part 3 parser.
+
+   Array values can be written with an initializer list (int a = [1, 2, 3];)
+   which the parser builds into an ArrayStmt node, but declaring a fixed size
+   and subscripting an array are not parsed yet. These rules are kept here so
+   the intent from Part 1 is on record.
+
+     <array-dimensions> ::= "[" <number> "]" { "[" <number> "]" }
+     <array-access> ::= <identifier> "[" <exp> "]" { "[" <exp> "]" }
+   ========================================================================== *)

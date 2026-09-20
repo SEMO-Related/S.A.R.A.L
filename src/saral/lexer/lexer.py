@@ -38,13 +38,16 @@ class Lexer:
     self._current = 0
     self._line = 1
     self._col = 1
+    self._start_line = 1
+    self._start_column = 1
 
   def scan_tokens(self) -> list[Token]:
     while not self._at_end():
       self._start = self._current
+      self._start_line = self._line
       self._start_column = self._col
       self._scan_token()
-    self.tokens.append(Token(TokenType.EOF, "", None))
+    self.tokens.append(Token(TokenType.EOF, "", None, self._line, self._col))
     return self.tokens
 
   def _at_end(self) -> bool:
@@ -74,13 +77,13 @@ class Lexer:
 
   def _error(self, message: str) -> None:
     """Add error message to the errors list"""
-    self.errors.append(LexError(message, self._line, self._start_column))
+    self.errors.append(LexError(message, self._start_line, self._start_column))
 
   def _add_token(self, type_: TokenType, literal=None) -> None:
     """Add the identified token to the tokens list"""
     lexeme = self.source[self._start : self._current]
     self.tokens.append(
-      Token(type_, lexeme, literal)
+      Token(type_, lexeme, literal, self._start_line, self._start_column)
     )
 
   def _scan_token(self):
@@ -125,7 +128,7 @@ class Lexer:
       self._error("Unterminated string literal")
     else:
       self._advance()
-    self._add_token(TokenType.STRING, literal="".join(value_chars))
+    self._add_token(TokenType.STRING_LITERAL, literal="".join(value_chars))
 
   def _scan_number(self) -> None:
     while self._peek().isdigit():

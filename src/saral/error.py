@@ -8,3 +8,6 @@ class SaralError(Exception):
 
 class LexError(SaralError):
     """Raised for a single invalid token during lexing."""
+
+class ParseError(SaralError):
+    """Raised when the token stream does not match the S.A.R.A.L grammar."""

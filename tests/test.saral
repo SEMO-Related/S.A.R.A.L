@@ -1,9 +1,10 @@
 int multiply(int n1, int n2) {
-  return n1 * n2;
+  int mult = n1 * n2;
+  return mult;
 }
 
 int res = multiply(20, 30);
-double r = res * 50.0;
+float r = res * 50.0;
 
-show("Result: );
-show(res)
+show("Result: ");
+show(res);
