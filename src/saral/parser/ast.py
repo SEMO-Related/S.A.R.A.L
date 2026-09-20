@@ -73,7 +73,7 @@ class BlockStmt(Stmt):
 
 @dataclass
 class AssignmentStmt(Stmt):
-    var_type: str
+    var_type: str | None
     name: str
     value: Expr
 

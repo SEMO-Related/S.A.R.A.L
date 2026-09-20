@@ -52,9 +52,9 @@ class Parser:
             return self.return_statement()
         elif self.match(TokenType.IDENTIFIER):
             #print("Matched identifier statement:", self.previous())  # Debugging line
-            return self.function_call_statement(self.previous())
-        else:
-            raise Exception("Unexpected token: " + self.peek().lexeme) # Replace with a proper error handling
+            if self.check_next(TokenType.LPAREN):
+                return self.function_call_statement()
+            return self.reassignment()
 
     def declaration(self) -> Stmt:
         """<assignment> ::= <type> <identifier> = <initializer>;
@@ -71,6 +71,13 @@ class Parser:
         value = self.initializer()
         self.consume(TokenType.SEMICOLON, "Expected ';' after the assignment")
         return AssignmentStmt(var_type=type_token.lexeme, name=name.lexeme, value=value)
+    
+    def reassignment(self) -> AssignmentStmt:
+        name = self.consume(TokenType.IDENTIFIER, "Expected a variable name")
+        self.consume(TokenType.ASSIGN, "Expected '=' after the variable name")
+        value = self.initializer()
+        self.consume(TokenType.SEMICOLON, "Expected ';' after the assignment")
+        return AssignmentStmt(var_type=None, name=name.lexeme, value=value)
     
     def initializer(self) -> Expr:
         if self.match(TokenType.LBRACKET):
@@ -135,7 +142,7 @@ class Parser:
         
         if self.match(TokenType.IDENTIFIER):
             if self.check(TokenType.LPAREN):
-                return self.function_call_statement(self.previous())
+                return self.finish_call(self.previous())
             return Variable(name=self.previous().lexeme)
         raise Exception("Expected expression, found: " + self.peek().lexeme) # Replace with a proper error handling mechanism
 
@@ -204,16 +211,12 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expected ';' after return statement")
         return ReturnStmt(value=value)
 
-    def function_call_statement(self, name_token):
+    def function_call_statement(self) -> FunctionCall:
+        name = self.consume(TokenType.IDENTIFIER, "Expected a function name")
+        call = self.finish_call(name)
+        self.consume(TokenType.SEMICOLON, "Expected ';' after the function call")
+        return call
 
-        self.consume(TokenType.LPAREN, "Expected '(' after function name")
-        arguments = []
-        if not self.check(TokenType.RPAREN):
-            arguments.append(self.argument())
-            while self.match(TokenType.COMMA):
-                arguments.append(self.argument())
-        self.consume(TokenType.RPAREN, "Expected ')' after arguments")
-        return FunctionCall(name=name_token.lexeme, arguments=arguments)
 
     def function_statement(self, type_token, name):
 
@@ -232,6 +235,16 @@ class Parser:
     def array_initializer(self,name,elements):
         pass
 
+    def finish_call(self, name_token: Token) -> FunctionCall:
+        self.consume(TokenType.LPAREN, "Expected '(' after the function name")
+        arguments = []
+        if not self.check(TokenType.RPAREN):
+            arguments.append(self.argument())
+            while self.match(TokenType.COMMA):
+                arguments.append(self.argument())
+        self.consume(TokenType.RPAREN, "Expected ')' after the arguments")
+        return FunctionCall(name=name_token.lexeme, arguments=arguments)
+
     
     # -------------Support Methods-------------
     def is_assign(self) -> bool:
@@ -242,6 +255,11 @@ class Parser:
     
     def peek(self) -> Token:
         return self.tokens[self.current]
+    
+    def peek_next(self) -> Token:
+        if self.current + 1 >= len(self.tokens):
+            return self.tokens[-1]
+        return self.tokens[self.current + 1]
 
     def previous(self) -> Token:
         return self.tokens[self.current - 1]
@@ -258,6 +276,9 @@ class Parser:
 
     def check_any(self, *types: TokenType) -> bool:
         return any(self.check(type_) for type_ in types)
+    
+    def check_next(self, type_: TokenType) -> bool:
+        return self.peek_next().type == type_
 
     def match(self, *types: TokenType) -> bool:
         for type_ in types:
