@@ -83,13 +83,23 @@ def main() -> int:
   )
 
   tokenize_parser.add_argument(
-  "file",
-  nargs="?",
-  help="Path to a .saral source file"
-)
+    "file",
+    nargs="?",
+    help="Path to a .saral source file"
+  )
 
   parse_parser = subparsers.add_parser(
     "parse", help="Parse a file and print its AST"
+  )
+
+  parse_parser.add_argument(
+    "file",
+    nargs="?",
+    help="Path to a .saral source file"
+  )
+
+  parse_parser = subparsers.add_parser(
+    "run", help="Interpret a file and execute it"
   )
 
   parse_parser.add_argument(
@@ -105,6 +115,9 @@ def main() -> int:
 
   elif args.command == "parse":
     return cmd_parse(args.file)
+
+  elif args.command == "run":
+    return cmd_run(args.file)
 
   return 0
 
