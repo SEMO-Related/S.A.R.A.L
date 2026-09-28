@@ -1,0 +1,3 @@
+string name = "saral";
+bool flag = true;
+show(name + flag);

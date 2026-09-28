@@ -1,0 +1,6 @@
+int x = 1;
+while (x <= 5) {
+    show(x);
+    x = x + 1;
+}
+show(x);

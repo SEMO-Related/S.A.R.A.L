@@ -1,0 +1,9 @@
+string greeting = "hello, saral!";
+show(greeting);
+
+bool ready = true;
+show(ready);
+
+int a = 3;
+int b = 4;
+show(a * b);
