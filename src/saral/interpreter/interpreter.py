@@ -20,6 +20,8 @@ from ..parser.ast import (
 )
 from .env import Environment
 
+_NUMERIC = (int, float)
+
 _TYPE_CHECKS = {
     "int": lambda v: isinstance(v, int) and not isinstance(v, bool),
     "float": lambda v: isinstance(v, float) or (isinstance(v, int) and not isinstance(v, bool)),
@@ -109,7 +111,7 @@ class Interpreter:
 
     def _apply_operator(self, op: str, left: Any, right: Any) -> Any:
         if op == "+":
-            if isinstance(left, (int, float)) and isinstance(right, (int, float)) \
+            if isinstance(left, _NUMERIC) and isinstance(right, _NUMERIC) \
                     and not isinstance(left, bool) and not isinstance(right, bool):
                 return left + right
             if isinstance(left, str) and isinstance(right, str):
@@ -163,8 +165,8 @@ class Interpreter:
     @staticmethod
     def _both_numeric(left: Any, right: Any) -> bool:
         return (
-            isinstance(left, (int, float)) and not isinstance(left, bool)
-            and isinstance(right, (int, float)) and not isinstance(right, bool)
+            isinstance(left, _NUMERIC) and not isinstance(left, bool)
+            and isinstance(right, _NUMERIC) and not isinstance(right, bool)
         )
 
     @staticmethod
@@ -173,7 +175,7 @@ class Interpreter:
             return False
         if isinstance(value, bool):
             return value
-        if isinstance(value, (int, float)):
+        if isinstance(value, _NUMERIC):
             return value != 0
         if isinstance(value, str):
             return len(value) > 0
