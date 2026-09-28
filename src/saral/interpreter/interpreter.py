@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-
+from ..error import InterpreterError
 from ..parser.ast import (
   AssignmentStmt,
   Binary,
@@ -43,8 +43,7 @@ class Interpreter:
     def execute(self, stmt: Stmt) -> None:
         handler = getattr(self, f"exec_{type(stmt).__name__}", None)
         if handler is None:
-            print(f"No execution rule for statement '{type(stmt).__name__}'")
-            return
+            raise InterpreterError(f"No execution rule for statement '{type(stmt).__name__}'")
         handler(stmt)
 
     def execute_block(self, statements: list[Stmt], env: Environment) -> None:
@@ -61,7 +60,7 @@ class Interpreter:
         if stmt.var_type is not None:
             check = _TYPE_CHECKS.get(stmt.var_type)
             if check is not None and not check(value):
-                print(f"Type mismatch: cannot assign {self._type_name(value)} value to '{stmt.var_type}' variable '{stmt.name}'")
+                raise InterpreterError(f"Type mismatch: cannot assign {self._type_name(value)} value to '{stmt.var_type}' variable '{stmt.name}'")
             self.environment.define(stmt.name, value)
         else:
             self.environment.assign(stmt.name, value)
@@ -88,8 +87,7 @@ class Interpreter:
     def evaluate(self, expr: Expr) -> Any:
         handler = getattr(self, f"eval_{type(expr).__name__}", None)
         if handler is None:
-            print(f"No evaluation rule for expression '{type(expr).__name__}'")
-            return
+            raise InterpreterError(f"No evaluation rule for expression '{type(expr).__name__}'")
         return handler(expr)
 
     def eval_NumberNode(self, expr: NumberNode) -> Any:
@@ -116,14 +114,14 @@ class Interpreter:
                 return left + right
             if isinstance(left, str) and isinstance(right, str):
                 return left + right
-            print(
+            raise InterpreterError(
                 f"Invalid operation: cannot apply '+' to "
                 f"{self._type_name(left)} and {self._type_name(right)}"
             )
 
         if op in ("-", "*", "/", "%"):
             if not self._both_numeric(left, right):
-                print(
+                raise InterpreterError(
                     f"Invalid operation: cannot apply '{op}' to "
                     f"{self._type_name(left)} and {self._type_name(right)}"
                 )
@@ -133,11 +131,11 @@ class Interpreter:
                 return left * right
             if op == "/":
                 if right == 0:
-                    print("Division by zero")
+                    raise InterpreterError("Division by zero")
                 return left / right
             if op == "%":
                 if right == 0:
-                    print("Division by zero (modulo)")
+                    raise InterpreterError("Division by zero (modulo)")
                 return left % right
 
         if op == "==":
@@ -147,7 +145,7 @@ class Interpreter:
 
         if op in ("<", ">", "<=", ">="):
             if not self._both_numeric(left, right):
-                print(
+                raise InterpreterError(
                     f"Invalid operation: cannot compare "
                     f"{self._type_name(left)} and {self._type_name(right)} with '{op}'"
                 )
@@ -160,7 +158,7 @@ class Interpreter:
             if op == ">=":
                 return left >= right
 
-        print(f"Unknown operator '{op}'")
+        raise InterpreterError(f"Unknown operator '{op}'")
 
     @staticmethod
     def _both_numeric(left: Any, right: Any) -> bool:
