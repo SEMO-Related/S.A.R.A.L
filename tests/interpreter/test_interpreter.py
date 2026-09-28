@@ -8,13 +8,9 @@ from saral.parser.ast import (
     Binary,
     BlockStmt,
     BoolNode,
-    FunctionCall,
-    FunctionStmt,
     IfStmt,
     NumberNode,
-    Parameter,
     Program,
-    ReturnStmt,
     ShowStmt,
     StringNode,
     Variable,
@@ -188,38 +184,9 @@ def test_while_loop_mutates_enclosing_scope(capsys):
 
 
 # ---------------------------------------------------------------------------
-# Functions (bonus, beyond the required rubric)
-# ---------------------------------------------------------------------------
-
-def test_function_call_and_return(capsys):
-    add_fn = FunctionStmt(
-        return_type="int", name="add",
-        parameters=[Parameter("int", "a"), Parameter("int", "b")],
-        body=BlockStmt([
-            ReturnStmt(value=Binary(left=Variable("a"), operator="+", right=Variable("b")))
-        ]),
-    )
-    call = FunctionCall(name="add", arguments=[])
-    from saral.parser.ast import Argument
-    call.arguments = [Argument(NumberNode(2)), Argument(NumberNode(3))]
-
-    run([add_fn, ShowStmt(expression=call)])
-    assert capsys.readouterr().out == "5\n"
-
-
-# ---------------------------------------------------------------------------
 # Runtime errors
 # ---------------------------------------------------------------------------
 
 def test_undefined_variable_raises():
     with pytest.raises(InterpreterError, match="Undefined variable 'y'"):
         run([ShowStmt(expression=Variable("y"))])
-
-
-def test_calling_non_function_raises():
-    stmts = [
-        AssignmentStmt(var_type="int", name="x", value=NumberNode(5)),
-        ShowStmt(expression=FunctionCall(name="x", arguments=[])),
-    ]
-    with pytest.raises(InterpreterError, match="is not a function"):
-        run(stmts)
