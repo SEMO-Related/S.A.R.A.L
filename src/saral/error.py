@@ -11,3 +11,6 @@ class LexError(SaralError):
 
 class ParseError(SaralError):
     """Raised when the token stream does not match the S.A.R.A.L grammar."""
+
+class InterpreterError(SaralError):
+   """Raised when a runtime error occurs"""
