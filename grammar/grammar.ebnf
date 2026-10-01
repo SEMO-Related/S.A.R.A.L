@@ -1,21 +1,6 @@
 (* ==========================================================================
    S.A.R.A.L - Simple And Readable Arithmetic Language
    BNF/EBNF grammar
-
-   Updated for Final Project Part 3 (Parser & AST).
-   Every rule below is implemented in src/saral/parser/parser.py; the method
-   names in that file mirror the rule names here.
-
-   Changes made in Part 3:
-     - <exp> now sits at the comparison level, so comparisons are legal
-       anywhere an expression is (conditions, assignments, arguments).
-       The old arithmetic-only rule was renamed <arith-exp>.
-     - <factor> now lists <string> and <bool>, which the lexer and parser
-       already supported but the grammar did not mention.
-     - <assignment> reassignment form now takes an <initializer>.
-     - <show-stmt> collapsed to one form, since <exp> covers strings.
-     - Array subscripting rules moved to the "not yet implemented" section
-       so this grammar describes only what the parser actually accepts.
    ========================================================================== *)
 
 <program> ::= <stmt-list>
@@ -102,6 +87,19 @@
             | <identifier>
             | <func-call>
 
+(* ------------------------------- comments ------------------------------ *)
+
+<comment> ::= <line-comment> | <block-comment>
+
+<line-comment> ::= "//" { <any-char-except-newline> } ( <newline> | <EOF> )
+
+<block-comment> ::= "/*" { <any-char> } "*/"
+
+<any-char> ::= <letter> | <digit> | <printable-chars> | " " | <newline>
+
+<any-char-except-newline> ::= <letter> | <digit> | <printable-chars> | " "
+
+
 (* ------------------------------- terminals ------------------------------ *)
 
 <identifier> ::= <letter> { <letter> | <digit> }
@@ -134,15 +132,3 @@
 <type> ::= int | float | string | bool
 
 <return-type> ::= int | float | string | bool
-
-(* ==========================================================================
-   Planned, NOT yet implemented by the Part 3 parser.
-
-   Array values can be written with an initializer list (int a = [1, 2, 3];)
-   which the parser builds into an ArrayStmt node, but declaring a fixed size
-   and subscripting an array are not parsed yet. These rules are kept here so
-   the intent from Part 1 is on record.
-
-     <array-dimensions> ::= "[" <number> "]" { "[" <number> "]" }
-     <array-access> ::= <identifier> "[" <exp> "]" { "[" <exp> "]" }
-   ========================================================================== *)

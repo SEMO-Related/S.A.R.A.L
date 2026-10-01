@@ -1,0 +1,9 @@
+int a = 5;
+int b = 8;
+
+show(a == b);
+show(a != b);
+show(a < b);
+show(a > b);
+show(a <= 5);
+show(b >= 8);

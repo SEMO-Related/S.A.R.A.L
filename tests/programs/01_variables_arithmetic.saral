@@ -1,0 +1,11 @@
+int x = 10;
+int y = x + 5;
+show(x);
+show(y);
+
+int result = (x + y) * 2 - 3;
+show(result);
+
+float pi = 3.14;
+float area = pi * 2 * 2;
+show(area);

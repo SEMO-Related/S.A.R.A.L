@@ -3,8 +3,14 @@ import sys
 
 from .lexer import Lexer
 from .parser.parser import Parser
+from .interpreter.interpreter import Interpreter
+from .error import ParseError, InterpreterError
 from .parser.ast import print_ast
 
+def _read(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+    
 def cmd_tokenize(path: str) -> int:
   source = get_source(path)
 
@@ -39,6 +45,28 @@ def cmd_parse(path: str) -> int:
   print_ast(ast)
   return 0
 
+def cmd_run(path: str) -> int:
+    lexer = Lexer(_read(path))
+    tokens = lexer.scan_tokens()
+    if lexer.errors:
+        for err in lexer.errors:
+            print(f"Lexical error: {err}", file=sys.stderr)
+        return 1
+
+    try:
+        program = Parser(tokens).parse()
+    except ParseError as err:
+        print(f"Syntax error: {err}", file=sys.stderr)
+        return 1
+
+    try:
+        Interpreter().interpret(program)
+    except InterpreterError as err:
+        print(f"Runtime error: {err.message}", file=sys.stderr)
+        return 1
+
+    return 0
+
 def get_source(path: str | None) -> str:
   if path:
     with open(path, "r", encoding="utf-8") as f:
@@ -55,13 +83,23 @@ def main() -> int:
   )
 
   tokenize_parser.add_argument(
-  "file",
-  nargs="?",
-  help="Path to a .saral source file"
-)
+    "file",
+    nargs="?",
+    help="Path to a .saral source file"
+  )
 
   parse_parser = subparsers.add_parser(
     "parse", help="Parse a file and print its AST"
+  )
+
+  parse_parser.add_argument(
+    "file",
+    nargs="?",
+    help="Path to a .saral source file"
+  )
+
+  parse_parser = subparsers.add_parser(
+    "run", help="Interpret a file and execute it"
   )
 
   parse_parser.add_argument(
@@ -77,6 +115,9 @@ def main() -> int:
 
   elif args.command == "parse":
     return cmd_parse(args.file)
+
+  elif args.command == "run":
+    return cmd_run(args.file)
 
   return 0
 

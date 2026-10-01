@@ -106,6 +106,14 @@ class Lexer:
       self._scan_identifier()
       return
 
+    if ch == "/" and self._peek() == "/":
+      self._scan_line_comment()
+      return
+
+    if ch == "/" and self._peek() == "*":
+      self._scan_block_comment()
+      return
+
     two_char = ch + self._peek()
     if two_char in _TWO_CHAR_OPERATORS:
       self._advance()
@@ -129,6 +137,21 @@ class Lexer:
     else:
       self._advance()
     self._add_token(TokenType.STRING_LITERAL, literal="".join(value_chars))
+
+  def _scan_line_comment(self) -> None:
+    self._advance()
+    while self._peek() != "\n" and not self._at_end():
+        self._advance()
+
+  def _scan_block_comment(self) -> None:
+    self._advance()
+    while not (self._peek() == "*" and self._peek(1) == "/"):
+        if self._at_end():
+            self._error("Unterminated block comment")
+            return
+        self._advance()
+    self._advance()
+    self._advance()
 
   def _scan_number(self) -> None:
     while self._peek().isdigit():
