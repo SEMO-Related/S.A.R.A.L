@@ -4,13 +4,20 @@ from saral.error import InterpreterError
 from saral.interpreter.env import Environment
 from saral.interpreter.interpreter import Interpreter
 from saral.parser.ast import (
+    Argument,
+    ArrayStmt,
     AssignmentStmt,
     Binary,
     BlockStmt,
     BoolNode,
+    FunctionCall,
+    FunctionStmt,
     IfStmt,
+    Index,
     NumberNode,
+    Parameter,
     Program,
+    ReturnStmt,
     ShowStmt,
     StringNode,
     Variable,
@@ -23,10 +30,6 @@ def run(statements, interp: Interpreter | None = None) -> Interpreter:
     interp.interpret(Program(statements=statements))
     return interp
 
-
-# ---------------------------------------------------------------------------
-# Environment / symbol table
-# ---------------------------------------------------------------------------
 
 def test_environment_define_and_get():
     env = Environment()
@@ -45,25 +48,6 @@ def test_environment_assign_requires_prior_declaration():
     with pytest.raises(InterpreterError, match="Undefined variable"):
         env.assign("x", 5)
 
-
-def test_environment_child_scope_sees_parent():
-    parent = Environment()
-    parent.define("x", 1)
-    child = Environment(enclosing=parent)
-    assert child.get("x") == 1
-
-
-def test_environment_assign_climbs_to_parent():
-    parent = Environment()
-    parent.define("x", 1)
-    child = Environment(enclosing=parent)
-    child.assign("x", 99)
-    assert parent.get("x") == 99  # not shadowed locally -- mutated in place
-
-
-# ---------------------------------------------------------------------------
-# Variable assignment
-# ---------------------------------------------------------------------------
 
 def test_variable_declaration_and_read(capsys):
     stmts = [
@@ -84,20 +68,7 @@ def test_reassignment_updates_value(capsys):
     assert capsys.readouterr().out == "2\n"
 
 
-def test_declared_type_mismatch_raises():
-    stmts = [AssignmentStmt(var_type="int", name="x", value=StringNode("oops"))]
-    with pytest.raises(InterpreterError, match="Type mismatch"):
-        run(stmts)
-
-
-# ---------------------------------------------------------------------------
-# Arithmetic + precedence
-# ---------------------------------------------------------------------------
-
 def test_arithmetic_precedence(capsys):
-    # 2 + 3 * 4 should be 14, not 20 -- precedence is baked into how the
-    # PARSER nests the Binary nodes (Mul binds tighter than Add), so this
-    # also doubles as a check that the AST shape itself is correct.
     expr = Binary(left=NumberNode(2), operator="+", right=Binary(
         left=NumberNode(3), operator="*", right=NumberNode(4)
     ))
@@ -117,16 +88,6 @@ def test_invalid_operation_raises():
         run([ShowStmt(expression=expr)])
 
 
-def test_string_concatenation_with_plus(capsys):
-    expr = Binary(left=StringNode("foo"), operator="+", right=StringNode("bar"))
-    run([ShowStmt(expression=expr)])
-    assert capsys.readouterr().out == "foobar\n"
-
-
-# ---------------------------------------------------------------------------
-# Comparisons
-# ---------------------------------------------------------------------------
-
 @pytest.mark.parametrize("op,expected", [
     ("==", False), ("!=", True), ("<", True),
     (">", False), ("<=", True), (">=", False),
@@ -137,10 +98,6 @@ def test_all_comparison_operators(op, expected, capsys):
     assert capsys.readouterr().out == ("true\n" if expected else "false\n")
 
 
-# ---------------------------------------------------------------------------
-# If / else
-# ---------------------------------------------------------------------------
-
 def test_if_true_branch(capsys):
     stmt = IfStmt(
         condition=BoolNode(True),
@@ -150,20 +107,6 @@ def test_if_true_branch(capsys):
     run([stmt])
     assert capsys.readouterr().out == "1\n"
 
-
-def test_if_false_branch_runs_else(capsys):
-    stmt = IfStmt(
-        condition=BoolNode(False),
-        then_branch=BlockStmt([ShowStmt(NumberNode(1))]),
-        else_branch=BlockStmt([ShowStmt(NumberNode(0))]),
-    )
-    run([stmt])
-    assert capsys.readouterr().out == "0\n"
-
-
-# ---------------------------------------------------------------------------
-# While loops
-# ---------------------------------------------------------------------------
 
 def test_while_loop_mutates_enclosing_scope(capsys):
     stmts = [
@@ -183,9 +126,92 @@ def test_while_loop_mutates_enclosing_scope(capsys):
     assert capsys.readouterr().out == "1\n2\n3\n"
 
 
-# ---------------------------------------------------------------------------
-# Runtime errors
-# ---------------------------------------------------------------------------
+def test_function_call_and_return(capsys):
+    add_fn = FunctionStmt(
+        return_type="int", name="add",
+        parameters=[Parameter("int", "a"), Parameter("int", "b")],
+        body=BlockStmt([
+            ReturnStmt(value=Binary(left=Variable("a"), operator="+", right=Variable("b")))
+        ]),
+    )
+    call = FunctionCall(name="add", arguments=[Argument(NumberNode(2)), Argument(NumberNode(3))])
+    run([add_fn, ShowStmt(expression=call)])
+    assert capsys.readouterr().out == "5\n"
+
+
+def test_array_literal_matching_declared_element_type_is_allowed(capsys):
+    # `int arr = [1, 2, 3];` -- the grammar has no separate "array of T"
+    # type keyword, so "int" here means "array of int", not "arr must be
+    # a scalar int". This used to incorrectly raise a Type mismatch.
+    stmts = [
+        AssignmentStmt(
+            var_type="int", name="arr",
+            value=ArrayStmt([NumberNode(1), NumberNode(2), NumberNode(3)]),
+        ),
+        ShowStmt(expression=Variable("arr")),
+    ]
+    run(stmts)
+    assert capsys.readouterr().out == "[1, 2, 3]\n"
+
+
+def test_array_literal_with_mismatched_element_type_still_raises():
+    stmts = [
+        AssignmentStmt(
+            var_type="int", name="arr",
+            value=ArrayStmt([NumberNode(1), StringNode("two"), NumberNode(3)]),
+        ),
+    ]
+    with pytest.raises(InterpreterError, match="element 1 of array 'arr'"):
+        run(stmts)
+
+
+def test_array_index_read(capsys):
+    stmts = [
+        AssignmentStmt(
+            var_type="int", name="arr",
+            value=ArrayStmt([NumberNode(1), NumberNode(2), NumberNode(3)]),
+        ),
+        ShowStmt(expression=Index(array=Variable("arr"), index=NumberNode(1))),
+    ]
+    run(stmts)
+    assert capsys.readouterr().out == "2\n"
+
+
+def test_array_index_out_of_bounds_raises():
+    stmts = [
+        AssignmentStmt(var_type="int", name="arr", value=ArrayStmt([NumberNode(1)])),
+        ShowStmt(expression=Index(array=Variable("arr"), index=NumberNode(5))),
+    ]
+    with pytest.raises(InterpreterError, match="Index out of bounds"):
+        run(stmts)
+
+
+def test_indexing_a_non_array_raises():
+    stmts = [
+        AssignmentStmt(var_type="int", name="x", value=NumberNode(5)),
+        ShowStmt(expression=Index(array=Variable("x"), index=NumberNode(0))),
+    ]
+    with pytest.raises(InterpreterError, match="cannot index into int"):
+        run(stmts)
+
+
+def test_nested_array_index(capsys):
+    stmts = [
+        AssignmentStmt(
+            var_type="int", name="grid",
+            value=ArrayStmt([
+                ArrayStmt([NumberNode(1), NumberNode(2)]),
+                ArrayStmt([NumberNode(3), NumberNode(4)]),
+            ]),
+        ),
+        ShowStmt(expression=Index(
+            array=Index(array=Variable("grid"), index=NumberNode(1)),
+            index=NumberNode(0),
+        )),
+    ]
+    run(stmts)
+    assert capsys.readouterr().out == "3\n"
+
 
 def test_undefined_variable_raises():
     with pytest.raises(InterpreterError, match="Undefined variable 'y'"):

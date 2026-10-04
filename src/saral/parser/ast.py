@@ -37,6 +37,16 @@ class Binary(Expr):
 class ArrayStmt(Expr):
     elements: list[Expr]
 
+@dataclass
+class Index(Expr):
+    array: Expr
+    index: Expr
+
+@dataclass
+class IndexAssignment(Expr):
+    target: Index
+    value: Expr
+
 # -------------------------------- statements --------------------------------
 @dataclass
 class Parameter:
