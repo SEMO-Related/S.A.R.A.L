@@ -17,8 +17,9 @@
 
 (* ------------------------------ statements ------------------------------ *)
 
-<assignment> ::= <type> <identifier> = <initializer>;    (* declaration   *)
-                | <identifier> = <initializer>;          (* reassignment  *)
+<assignment> ::= <type> <identifier> = <initializer>;
+                | <identifier> = <initializer>;          
+                | <array-access> = <initializer>;       ß
 
 <show-stmt> ::= show(<exp>);
 
@@ -84,21 +85,14 @@
             | <number>
             | <string>
             | <bool>
+            | <array-access>
             | <identifier>
             | <func-call>
 
-(* ------------------------------- comments ------------------------------ *)
-
-<comment> ::= <line-comment> | <block-comment>
-
-<line-comment> ::= "//" { <any-char-except-newline> } ( <newline> | <EOF> )
-
-<block-comment> ::= "/*" { <any-char> } "*/"
-
-<any-char> ::= <letter> | <digit> | <printable-chars> | " " | <newline>
-
-<any-char-except-newline> ::= <letter> | <digit> | <printable-chars> | " "
-
+<array-access> ::= <identifier> "[" <exp> "]" { "[" <exp> "]" }
+                   (* reads an element; e.g. arr[1] or arr[i][j] for a
+                      nested array. Assigning to an index (arr[1] = 5;)
+                      is NOT implemented -- see the note below. *)
 
 (* ------------------------------- terminals ------------------------------ *)
 
@@ -132,3 +126,14 @@
 <type> ::= int | float | string | bool
 
 <return-type> ::= int | float | string | bool
+
+<comment> ::= <line-comment> | <block-comment>
+
+<line-comment> ::= "//" { <any-char-except-newline> } ( <newline> | <EOF> )
+
+<block-comment> ::= "/*" { <any-char> } "*/"
+                    (* does not nest: the first "*/" closes the comment *)
+
+<any-char> ::= <letter> | <digit> | <printable-chars> | " " | <newline>
+
+<any-char-except-newline> ::= <letter> | <digit> | <printable-chars> | " "
