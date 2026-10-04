@@ -1,0 +1,7 @@
+int mul(int x, int y) {
+    int res = x * y;
+    return res;
+}
+
+show(mul(3, 4));
+show(mal(3, 4));

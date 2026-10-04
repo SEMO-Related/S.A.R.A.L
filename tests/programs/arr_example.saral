@@ -1,0 +1,6 @@
+int arr = [1, 2, 3];
+
+arr[1] = 8;
+
+show(arr[0]);
+show(arr[1]);
