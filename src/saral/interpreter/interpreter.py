@@ -3,22 +3,27 @@ from __future__ import annotations
 from typing import Any
 from ..error import InterpreterError
 from ..parser.ast import (
-  AssignmentStmt,
-  Binary,
-  BlockStmt,
-  BoolNode,
-  Expr,
-  FunctionCall,
-  IfStmt,
-  NumberNode,
-  Program,
-  ShowStmt,
-  Stmt,
-  StringNode,
-  Variable,
-  WhileStmt,
+    ArrayStmt,
+    AssignmentStmt,
+    Binary,
+    BlockStmt,
+    BoolNode,
+    Expr,
+    FunctionCall,
+    FunctionStmt,
+    IfStmt,
+    Index,
+    NumberNode,
+    Program,
+    ReturnStmt,
+    ShowStmt,
+    Stmt,
+    StringNode,
+    Variable,
+    WhileStmt,
 )
 from .env import Environment
+from .function import ReturnSignal, SaralFunction
 
 _NUMERIC = (int, float)
 
@@ -28,6 +33,7 @@ _TYPE_CHECKS = {
     "string": lambda v: isinstance(v, str),
     "bool": lambda v: isinstance(v, bool),
 }
+
 
 class Interpreter:
     """Tree-walking interpreter: executes a Program by recursively
@@ -60,12 +66,52 @@ class Interpreter:
     def exec_AssignmentStmt(self, stmt: AssignmentStmt) -> None:
         value = self.evaluate(stmt.value)
         if stmt.var_type is not None:
-            check = _TYPE_CHECKS.get(stmt.var_type)
-            if check is not None and not check(value):
-                raise InterpreterError(f"Type mismatch: cannot assign {self._type_name(value)} value to '{stmt.var_type}' variable '{stmt.name}'")
+            self._check_declared_type(stmt.var_type, value, stmt.name)
             self.environment.define(stmt.name, value)
         else:
             self.environment.assign(stmt.name, value)
+
+    def exec_IndexAssignment(self, stmt: IndexAssignment) -> None:
+        value = self.evaluate(stmt.value)
+        array = self.evaluate(stmt.target.array)
+        index = self.evaluate(stmt.target.index)
+
+        if not isinstance(array, list):
+            raise InterpreterError(
+                f"Invalid operation: cannot index into {self._type_name(array)}"
+            )
+        if not (isinstance(index, int) and not isinstance(index, bool)):
+            raise InterpreterError(
+                f"Invalid operation: array index must be an int, got "
+                f"{self._type_name(index)}"
+            )
+        if index < 0 or index >= len(array):
+            raise InterpreterError(
+                f"Index out of bounds: index {index} for array of length {len(array)}"
+            )
+        array[index] = value
+
+    def _check_declared_type(self, var_type: str, value: Any, name: str) -> None:
+        check = _TYPE_CHECKS.get(var_type)
+        if check is None:
+            return
+
+        if isinstance(value, list):
+            for i, element in enumerate(value):
+                if isinstance(element, list):
+                    self._check_declared_type(var_type, element, f"{name}[{i}]")
+                elif not check(element):
+                    raise InterpreterError(
+                        f"Type mismatch: element {i} of array '{name}' is "
+                        f"{self._type_name(element)}, expected '{var_type}'"
+                    )
+            return
+
+        if not check(value):
+            raise InterpreterError(
+                f"Type mismatch: cannot assign {self._type_name(value)} value "
+                f"to '{var_type}' variable '{name}'"
+            )
 
     def exec_ShowStmt(self, stmt: ShowStmt) -> None:
         print(self._stringify(self.evaluate(stmt.expression)))
@@ -82,6 +128,13 @@ class Interpreter:
 
     def exec_BlockStmt(self, stmt: BlockStmt) -> None:
         self.execute_block(stmt.statements, self.environment)
+
+    def exec_FunctionStmt(self, stmt: FunctionStmt) -> None:
+        self.environment.define(stmt.name, SaralFunction(stmt, self.environment))
+
+    def exec_ReturnStmt(self, stmt: ReturnStmt) -> None:
+        value = self.evaluate(stmt.value) if stmt.value is not None else None
+        raise ReturnSignal(value)
 
     def exec_FunctionCall(self, stmt: FunctionCall) -> None:
         self.evaluate(stmt)
@@ -104,10 +157,45 @@ class Interpreter:
     def eval_Variable(self, expr: Variable) -> Any:
         return self.environment.get(expr.name)
 
+    def eval_ArrayStmt(self, expr: ArrayStmt) -> Any:
+        return [self.evaluate(el) for el in expr.elements]
+
+    def eval_Index(self, expr: Index) -> Any:
+        array = self.evaluate(expr.array)
+        index = self.evaluate(expr.index)
+
+        if not isinstance(array, list):
+            raise InterpreterError(
+                f"Invalid operation: cannot index into {self._type_name(array)}"
+            )
+        if not (isinstance(index, int) and not isinstance(index, bool)):
+            raise InterpreterError(
+                f"Invalid operation: array index must be an int, got "
+                f"{self._type_name(index)}"
+            )
+        if index < 0 or index >= len(array):
+            raise InterpreterError(
+                f"Index out of bounds: index {index} for array of length {len(array)}"
+            )
+        return array[index]
+
     def eval_Binary(self, expr: Binary) -> Any:
         left = self.evaluate(expr.left)
         right = self.evaluate(expr.right)
         return self._apply_operator(expr.operator, left, right)
+
+    def eval_FunctionCall(self, expr: FunctionCall) -> Any:
+        callee = self.environment.get(expr.name)
+        if not isinstance(callee, SaralFunction):
+            raise InterpreterError(f"'{expr.name}' is not a function")
+
+        args = [self.evaluate(arg.value) for arg in expr.arguments]
+        if len(args) != callee.arity:
+            raise InterpreterError(
+                f"Function '{expr.name}' expects {callee.arity} argument(s) "
+                f"but got {len(args)}"
+            )
+        return callee.call(self, args)
 
     def _apply_operator(self, op: str, left: Any, right: Any) -> Any:
         if op == "+":
@@ -179,6 +267,8 @@ class Interpreter:
             return value != 0
         if isinstance(value, str):
             return len(value) > 0
+        if isinstance(value, list):
+            return len(value) > 0
         return True
 
     @staticmethod
@@ -191,6 +281,10 @@ class Interpreter:
             return "float"
         if isinstance(value, str):
             return "string"
+        if isinstance(value, list):
+            return "array"
+        if isinstance(value, SaralFunction):
+            return "function"
         if value is None:
             return "null"
         return type(value).__name__
@@ -201,4 +295,6 @@ class Interpreter:
             return "true" if value else "false"
         if value is None:
             return "null"
+        if isinstance(value, list):
+            return "[" + ", ".join(cls._stringify(v) for v in value) + "]"
         return str(value)

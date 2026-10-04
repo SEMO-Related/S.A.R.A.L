@@ -79,9 +79,19 @@ class Parser:
 
     def reassignment(self) -> AssignmentStmt:
         name = self.consume(TokenType.IDENTIFIER, "Expected a variable name")
+        target: Expr = Variable(name=name.lexeme)
+
+        while self.match(TokenType.LBRACKET):
+            index_expr = self.expression()
+            self.consume(TokenType.RBRACKET, "Expected ']' after the array index")
+            target = Index(array=target, index=index_expr)
+
         self.consume(TokenType.ASSIGN, "Expected '=' after the variable name")
         value = self.initializer()
         self.consume(TokenType.SEMICOLON, "Expected ';' after the assignment")
+
+        if isinstance(target, Index):
+            return IndexAssignment(target=target, value=value)
         return AssignmentStmt(var_type=None, name=name.lexeme, value=value)
 
     def show_statement(self) -> ShowStmt:
@@ -210,7 +220,12 @@ class Parser:
             name = self.previous()
             if self.check(TokenType.LPAREN):
               return cast(Expr, self.finish_call(name))
-            return Variable(name=name.lexeme)
+            expr: Expr = Variable(name=name.lexeme)
+            while self.match(TokenType.LBRACKET):
+                index_expr = self.expression()
+                self.consume(TokenType.RBRACKET, "Expected ']' after the array index")
+                expr = Index(array=expr, index=index_expr)
+            return expr
 
         raise self.error(
             self.peek(), f"Expected an expression but found {self.describe(self.peek())}"
