@@ -13,6 +13,7 @@ from ..parser.ast import (
     FunctionStmt,
     IfStmt,
     Index,
+    IndexAssignment,
     NumberNode,
     Program,
     ReturnStmt,
