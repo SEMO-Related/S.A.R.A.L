@@ -77,7 +77,7 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expected ';' after the assignment")
         return AssignmentStmt(var_type=type_token.lexeme, name=name.lexeme, value=value)
 
-    def reassignment(self) -> AssignmentStmt:
+    def reassignment(self) -> AssignmentStmt | IndexAssignment:
         name = self.consume(TokenType.IDENTIFIER, "Expected a variable name")
         target: Expr = Variable(name=name.lexeme)
 
@@ -92,6 +92,7 @@ class Parser:
 
         if isinstance(target, Index):
             return IndexAssignment(target=target, value=value)
+        
         return AssignmentStmt(var_type=None, name=name.lexeme, value=value)
 
     def show_statement(self) -> ShowStmt:
