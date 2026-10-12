@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 from ..parser.ast import FunctionStmt
 from .env import Environment
@@ -28,7 +29,7 @@ class SaralFunction:
     def arity(self) -> int:
         return len(self.declaration.parameters)
 
-    def call(self, interpreter: Interpreter, arguments: list[Any]) -> Any:
+    def call(self, interpreter: Interpreter, arguments: list[Any]) -> Any: # type: ignore
         env = Environment(enclosing=self.closure)
         for param, arg_value in zip(self.declaration.parameters, arguments):
             env.define(param.name, arg_value)
