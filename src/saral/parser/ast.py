@@ -42,11 +42,6 @@ class Index(Expr):
     array: Expr
     index: Expr
 
-@dataclass
-class IndexAssignment(Expr):
-    target: Index
-    value: Expr
-
 # -------------------------------- statements --------------------------------
 @dataclass
 class Parameter:
@@ -65,6 +60,11 @@ class BlockStmt(Stmt):
 class AssignmentStmt(Stmt):
     var_type: str | None
     name: str
+    value: Expr
+
+@dataclass
+class IndexAssignment(Stmt):
+    target: Index
     value: Expr
 
 @dataclass
